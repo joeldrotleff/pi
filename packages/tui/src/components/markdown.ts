@@ -204,6 +204,8 @@ export interface MarkdownTheme {
 	code: (text: string) => string;
 	codeBlock: (text: string) => string;
 	codeBlockBorder: (text: string) => string;
+	/** Background applied to full-width code block lines, fences included. Code blocks keep the surrounding background when omitted. */
+	codeBlockBg?: (text: string) => string;
 	quote: (text: string) => string;
 	quoteBorder: (text: string) => string;
 	hr: (text: string) => string;
@@ -338,6 +340,7 @@ export class Markdown implements Component {
 		const leftMargin = " ".repeat(this.paddingX);
 		const rightMargin = " ".repeat(this.paddingX);
 		const bgFn = this.defaultTextStyle?.bgColor;
+		const bgPrefix = bgFn ? this.getStylePrefix(bgFn) : "";
 		const contentLines: string[] = [];
 
 		for (const line of wrappedLines) {
@@ -349,7 +352,10 @@ export class Markdown implements Component {
 			const lineWithMargins = leftMargin + line + rightMargin;
 
 			if (bgFn) {
-				contentLines.push(applyBackgroundToLine(lineWithMargins, width, bgFn));
+				// An inner background, such as a code block panel, ends with \x1b[49m, which would
+				// also clear this background for the rest of the line. Reopen it after inner resets.
+				const restored = bgPrefix ? lineWithMargins.replaceAll("\x1b[49m", `\x1b[49m${bgPrefix}`) : lineWithMargins;
+				contentLines.push(applyBackgroundToLine(restored, width, bgFn));
 			} else {
 				// No background - just pad to width
 				const visibleLen = visibleWidth(lineWithMargins);
@@ -529,20 +535,32 @@ export class Markdown implements Component {
 
 			case "code": {
 				const indent = this.theme.codeBlockIndent ?? "  ";
-				lines.push(this.theme.codeBlockBorder(`\`\`\`${token.lang || ""}`));
+				const blockLines: string[] = [];
+				blockLines.push(this.theme.codeBlockBorder(`\`\`\`${token.lang || ""}`));
 				if (this.theme.highlightCode) {
 					const highlightedLines = this.theme.highlightCode(token.text, token.lang);
 					for (const hlLine of highlightedLines) {
-						lines.push(`${indent}${hlLine}`);
+						blockLines.push(`${indent}${hlLine}`);
 					}
 				} else {
 					// Split code by newlines and style each line
 					const codeLines = token.text.split("\n");
 					for (const codeLine of codeLines) {
-						lines.push(`${indent}${this.theme.codeBlock(codeLine)}`);
+						blockLines.push(`${indent}${this.theme.codeBlock(codeLine)}`);
 					}
 				}
-				lines.push(this.theme.codeBlockBorder("```"));
+				blockLines.push(this.theme.codeBlockBorder("```"));
+				const codeBlockBg = this.theme.codeBlockBg;
+				if (codeBlockBg) {
+					// Wrap here and pad each line to the full content width so the background forms a panel.
+					for (const blockLine of blockLines) {
+						for (const wrappedLine of wrapTextWithAnsi(blockLine, width)) {
+							lines.push(applyBackgroundToLine(wrappedLine, width, codeBlockBg));
+						}
+					}
+				} else {
+					lines.push(...blockLines);
+				}
 				if (nextTokenType && nextTokenType !== "space") {
 					lines.push(""); // Add spacing after code blocks (unless space token follows)
 				}

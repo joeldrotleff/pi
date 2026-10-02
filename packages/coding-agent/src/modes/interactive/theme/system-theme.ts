@@ -65,7 +65,11 @@ const FAMILIES = {
 
 type FamilyName = keyof typeof FAMILIES;
 
-const TOKEN_FAMILIES: Record<ThemeToken, FamilyName> = {
+// The system theme does not paint a code block panel, so it omits the optional mdCodeBlockBg token.
+export type SystemThemeToken = Exclude<ThemeToken, "mdCodeBlockBg">;
+type SystemThemeBg = Exclude<ThemeBg, "mdCodeBlockBg">;
+
+const TOKEN_FAMILIES: Record<SystemThemeToken, FamilyName> = {
 	selectedBg: "blue",
 	searchMatchBg: "orange",
 	userMessageBg: "blue",
@@ -248,17 +252,17 @@ const LEVELS = {
 
 type Level = keyof typeof LEVELS;
 
-type Surface = ThemeBg | "background" | "scrollbarTrack";
+type Surface = SystemThemeBg | "background" | "scrollbarTrack";
 
 interface Rule {
-	token: ThemeToken;
+	token: SystemThemeToken;
 	on: Surface[];
 	level: Level;
 }
 
 const TOOL_PANELS: Surface[] = ["toolPendingBg", "toolSuccessBg", "toolErrorBg"];
 const MESSAGE_PANELS: Surface[] = ["userMessageBg", "customMessageBg"];
-const PANELS: ThemeBg[] = [
+const PANELS: SystemThemeBg[] = [
 	"userMessageBg",
 	"toolPendingBg",
 	"toolSuccessBg",
@@ -286,7 +290,7 @@ const THINKING_LEVELS: Level[] = [
 	"thinking6",
 ];
 
-const each = (tokens: ThemeToken[], on: Surface[], level: Level): Rule[] =>
+const each = (tokens: SystemThemeToken[], on: Surface[], level: Level): Rule[] =>
 	tokens.map((token) => ({ token, on, level }));
 
 const RULES: Rule[] = [
@@ -350,9 +354,9 @@ const FOREGROUND_TOKENS: ThemeColor[] = ["text", "userMessageText", "toolTitle"]
 const TEXT_MINIMUM_WCAG_CONTRAST = 4.5;
 
 /** Tokens in dependency order: every surface before the tokens drawn on it. */
-const SOLVE_ORDER: ThemeToken[] = (() => {
-	const order: ThemeToken[] = [];
-	const visit = (token: ThemeToken): void => {
+const SOLVE_ORDER: SystemThemeToken[] = (() => {
+	const order: SystemThemeToken[] = [];
+	const visit = (token: SystemThemeToken): void => {
 		if (order.includes(token)) return;
 		for (const rule of RULES) {
 			if (rule.token !== token) continue;
@@ -381,7 +385,7 @@ export interface SystemThemeInput {
 
 export interface SystemThemeColors {
 	/** Hex colors, ANSI palette indices, or "" for the terminal default. */
-	colors: Record<ThemeToken, string | number>;
+	colors: Record<SystemThemeToken, string | number>;
 	/** Foreground tokens rendered faint (SGR 2), for terminals that did not report colors. */
 	dim: ThemeColor[];
 	appearance: ThemeAppearance | undefined;
@@ -477,7 +481,7 @@ export function generateSystemThemeColors(input: SystemThemeInput): SystemThemeC
 	 * A token's color at an OKLab lightness. With a palette, the palette color's saturation applies at its
 	 * own lightness and falls off toward black and white along the family's curve, never rising above it.
 	 */
-	const paint = (token: ThemeToken, oklabL: number): RgbColor => {
+	const paint = (token: SystemThemeToken, oklabL: number): RgbColor => {
 		const lightness = oklabToOkhslLightness(oklabL);
 		const family: Family = FAMILIES[TOKEN_FAMILIES[token]];
 		if (!palette) {
@@ -507,7 +511,7 @@ export function generateSystemThemeColors(input: SystemThemeInput): SystemThemeC
 	 */
 	const extremeText = lighter ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
 	const readable = (color: RgbColor) => wcagContrast(extremeText, color) >= TEXT_MINIMUM_WCAG_CONTRAST;
-	const limitPanel = (token: ThemeToken, l: number): RgbColor => {
+	const limitPanel = (token: SystemThemeToken, l: number): RgbColor => {
 		const color = paint(token, l);
 		if (readable(color)) return color;
 		let [low, high] = [backgroundL, l];
@@ -532,7 +536,7 @@ export function generateSystemThemeColors(input: SystemThemeInput): SystemThemeC
 				}
 			}
 			const l = lighter ? Math.max(...targets) : Math.min(...targets);
-			colors.set(token, PANELS.includes(token as ThemeBg) ? limitPanel(token, l) : paint(token, l));
+			colors.set(token, PANELS.includes(token as SystemThemeBg) ? limitPanel(token, l) : paint(token, l));
 		}
 		return colors;
 	};
@@ -557,8 +561,8 @@ export function generateSystemThemeColors(input: SystemThemeInput): SystemThemeC
 			rule.on.map((surface) => solved.get(surface) ?? background),
 		);
 
-	const result = {} as Record<ThemeToken, string | number>;
-	for (const token of Object.keys(TOKEN_FAMILIES) as ThemeToken[]) {
+	const result = {} as Record<SystemThemeToken, string | number>;
+	for (const token of Object.keys(TOKEN_FAMILIES) as SystemThemeToken[]) {
 		const color = solved.get(token);
 		result[token] = color ? hexOf(color) : "";
 	}
@@ -640,10 +644,10 @@ function withTextContrast(color: RgbColor, surfaces: RgbColor[], lighter: boolea
  * instead of bright black, which some themes make nearly invisible. Panels have no background.
  */
 function indexedColors(saturation: number, appearance: ThemeAppearance | undefined): SystemThemeColors {
-	const colors = {} as Record<ThemeToken, string | number>;
+	const colors = {} as Record<SystemThemeToken, string | number>;
 	const dim: ThemeColor[] = [];
-	for (const [token, familyName] of Object.entries(TOKEN_FAMILIES) as [ThemeToken, FamilyName][]) {
-		if (PANELS.includes(token as ThemeBg)) {
+	for (const [token, familyName] of Object.entries(TOKEN_FAMILIES) as [SystemThemeToken, FamilyName][]) {
+		if (PANELS.includes(token as SystemThemeBg)) {
 			colors[token] = "";
 			continue;
 		}

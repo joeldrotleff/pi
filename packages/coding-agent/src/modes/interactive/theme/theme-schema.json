@@ -222,6 +222,10 @@
 					"$ref": "#/$defs/colorValue",
 					"description": "Markdown code block fences"
 				},
+				"mdCodeBlockBg": {
+					"$ref": "#/$defs/colorValue",
+					"description": "Markdown code block background; code blocks keep the surrounding background when omitted"
+				},
 				"mdQuote": {
 					"$ref": "#/$defs/colorValue",
 					"description": "Markdown blockquote text"

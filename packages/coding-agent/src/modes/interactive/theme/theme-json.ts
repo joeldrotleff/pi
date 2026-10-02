@@ -58,6 +58,8 @@ const ThemeJsonSchema = Type.Object({
 		mdCode: ColorValueSchema,
 		mdCodeBlock: ColorValueSchema,
 		mdCodeBlockBorder: ColorValueSchema,
+		// Optional code block panel background. Code blocks keep the surrounding background when omitted.
+		mdCodeBlockBg: Type.Optional(ColorValueSchema),
 		mdQuote: ColorValueSchema,
 		mdQuoteBorder: ColorValueSchema,
 		mdHr: ColorValueSchema,

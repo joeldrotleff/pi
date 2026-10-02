@@ -112,7 +112,8 @@ export type ThemeBg =
 	| "customMessageBg"
 	| "toolPendingBg"
 	| "toolSuccessBg"
-	| "toolErrorBg";
+	| "toolErrorBg"
+	| "mdCodeBlockBg";
 
 export type ThemeToken = ThemeColor | ThemeBg;
 
@@ -126,7 +127,8 @@ export interface ThemeStyle extends TextAttributes {
 }
 
 type OptionalThemeColor = "scrollbarTrack" | "scrollbarThumb" | "thinkingMax" | "searchMatchText";
-type OptionalThemeBg = "searchMatchBg";
+// mdCodeBlockBg has no fallback: without it, code blocks keep the surrounding background.
+type OptionalThemeBg = "searchMatchBg" | "mdCodeBlockBg";
 
 // ============================================================================
 // Color Utilities
@@ -369,6 +371,11 @@ export class Theme {
 		return `${ansi}${text}\x1b[49m`;
 	}
 
+	/** Whether the theme defines an optional background token. */
+	hasBg(color: ThemeBg): boolean {
+		return this.bgAnsi.has(color);
+	}
+
 	private tokenAnsi<T extends ThemeToken>(ansi: Map<T, string>, token: T): string {
 		const value = ansi.get(token);
 		if (value === undefined) throw new Error(`Unknown theme color: ${token}`);
@@ -578,6 +585,7 @@ const BACKGROUND_TOKENS: ReadonlySet<string> = new Set<ThemeBg>([
 	"toolPendingBg",
 	"toolSuccessBg",
 	"toolErrorBg",
+	"mdCodeBlockBg",
 ]);
 
 function splitThemeColors(colors: Record<string, string | number>): {
@@ -1100,6 +1108,11 @@ export function getMarkdownTheme(): MarkdownTheme {
 		code: (text: string) => theme.fg("mdCode", text),
 		codeBlock: (text: string) => theme.fg("mdCodeBlock", text),
 		codeBlockBorder: (text: string) => theme.fg("mdCodeBlockBorder", text),
+		// A getter so a theme switch takes effect without rebuilding transcript components.
+		get codeBlockBg(): ((text: string) => string) | undefined {
+			if (!theme.hasBg("mdCodeBlockBg")) return undefined;
+			return (text: string) => theme.bg("mdCodeBlockBg", text);
+		},
 		quote: (text: string) => theme.fg("mdQuote", text),
 		quoteBorder: (text: string) => theme.fg("mdQuoteBorder", text),
 		hr: (text: string) => theme.fg("mdHr", text),

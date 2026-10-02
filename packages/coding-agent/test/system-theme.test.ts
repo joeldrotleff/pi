@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	generateSystemThemeColors,
 	type SystemThemeInput,
+	type SystemThemeToken,
 	wcagContrast,
 } from "../src/modes/interactive/theme/system-theme.ts";
 import {
@@ -10,7 +11,6 @@ import {
 	getThemeByName,
 	getThemeExportColors,
 	setTerminalColors,
-	type ThemeToken,
 } from "../src/modes/interactive/theme/theme.ts";
 
 const rgb = (hex: string): RgbColor => colorToRgb(parseColor(hex));
@@ -32,9 +32,9 @@ const TERMINALS: Record<string, SystemThemeInput> = {
 	midGray: { background: rgb("#808080"), foreground: rgb("#ffffff") },
 };
 
-const PANELS: ThemeToken[] = ["userMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg", "selectedBg"];
+const PANELS: SystemThemeToken[] = ["userMessageBg", "toolPendingBg", "toolSuccessBg", "toolErrorBg", "selectedBg"];
 
-function resolved(input: SystemThemeInput, token: ThemeToken): RgbColor {
+function resolved(input: SystemThemeInput, token: SystemThemeToken): RgbColor {
 	const value = generateSystemThemeColors(input).colors[token];
 	if (value === "") return PANELS.includes(token) ? input.background! : input.foreground!;
 	return rgb(value as string);
@@ -61,7 +61,7 @@ describe("generateSystemThemeColors", () => {
 	it("orders foreground roles by contrast and keeps panels close to the background", () => {
 		for (const [name, input] of Object.entries(TERMINALS)) {
 			const background = lightness(input.background!);
-			const offset = (token: ThemeToken) => lightness(resolved(input, token)) - background;
+			const offset = (token: SystemThemeToken) => lightness(resolved(input, token)) - background;
 			// On mid-gray the levels collapse to the strongest reachable color.
 			if (name !== "midGray") {
 				expect(Math.abs(offset("text")), name).toBeGreaterThan(Math.abs(offset("muted")));

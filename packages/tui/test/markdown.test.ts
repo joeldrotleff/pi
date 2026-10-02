@@ -1771,4 +1771,53 @@ bar`,
 			assert.strictEqual(partial.render(80).length, complete.render(80).length);
 		});
 	});
+
+	describe("Code block background", () => {
+		const codeBg = "\x1b[48;2;10;20;30m";
+		const themeWithCodeBg: MarkdownTheme = {
+			...defaultMarkdownTheme,
+			codeBlockBg: (text) => `${codeBg}${text}\x1b[49m`,
+		};
+
+		it("pads code block lines to the content width and applies the background", () => {
+			const markdown = new Markdown("prose\n\n```\ncode\n```", 0, 0, themeWithCodeBg);
+			const lines = markdown.render(20);
+
+			const proseLine = lines.find((line) => line.includes("prose"));
+			assert.ok(proseLine);
+			assert.ok(!proseLine.includes(codeBg), "prose must not get the code block background");
+
+			for (const text of ["```", "code"]) {
+				const line = lines.find((candidate) => stripAnsi(candidate).trim().startsWith(text));
+				assert.ok(line, `missing code block line for ${text}`);
+				assert.ok(line.includes(codeBg), `code block line for ${text} must get the background`);
+				assert.strictEqual(stripAnsi(line).length, 20, "background must span the full content width");
+			}
+		});
+
+		it("restores an enclosing background after the code block panel", () => {
+			const messageBg = "\x1b[48;2;200;200;200m";
+			const markdown = new Markdown("```\ncode\n```", 2, 0, themeWithCodeBg, {
+				bgColor: (text) => `${messageBg}${text}\x1b[49m`,
+			});
+			const lines = markdown.render(20);
+
+			const codeLine = lines.find((line) => line.includes("code"));
+			assert.ok(codeLine);
+			assert.ok(
+				codeLine.includes(`\x1b[49m${messageBg}`),
+				"the message background must reopen after the code panel closes",
+			);
+		});
+
+		it("adds no background without a code block background", () => {
+			const markdown = new Markdown("```\ncode\n```", 0, 0, defaultMarkdownTheme);
+			const lines = markdown.render(20);
+
+			const codeLine = lines.find((line) => line.includes("code"));
+			assert.ok(codeLine);
+			assert.ok(!codeLine.includes("\x1b[48;"), "code block line must not get a background");
+			assert.strictEqual(stripAnsi(codeLine).trimEnd(), "  code");
+		});
+	});
 });

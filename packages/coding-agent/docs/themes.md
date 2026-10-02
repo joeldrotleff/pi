@@ -125,6 +125,8 @@ Five colors are optional and inherit another color when omitted:
 | `searchMatchText` | `text` |
 | `thinkingMax` | `thinkingXhigh` |
 
+`mdCodeBlockBg` is also optional and has no fallback. When set, Markdown code blocks render as full-width panels with that background, so for example a light theme can show code on a dark panel. When omitted, code blocks keep the surrounding background.
+
 If `export` colors are omitted, Pi derives HTML page and panel backgrounds from `userMessageBg`.
 
 ## Load a theme from a project or package
